@@ -166,8 +166,8 @@ export default function RegisterPageClient() {
                   <div className="mt-2 p-3 rounded-lg bg-muted/50 space-y-1">
                     <p className="text-xs font-medium mb-2">Password Requirements:</p>
                     <ul className="space-y-1 text-xs">
-                      <li className={password?.length >= 12 ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}>
-                        {password?.length >= 12 ? '✓' : '○'} At least 12 characters
+                      <li className={password?.length >= 6 ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}>
+                        {password?.length >= 6 ? '✓' : '○'} At least 6 characters
                       </li>
                       <li className={/[a-z]/.test(password || '') ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}>
                         {/[a-z]/.test(password || '') ? '✓' : '○'} One lowercase letter (a-z)

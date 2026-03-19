@@ -163,7 +163,7 @@ export default function ChangePasswordPage() {
                   className={`w-full px-4 py-3 pr-12 rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring ${
                     errors.newPassword ? 'border-destructive focus:ring-destructive' : 'border-input'
                   }`}
-                  placeholder="Enter new password (min 12 characters)"
+                  placeholder="Enter new password (min 6 characters)"
                 />
                 <button
                   type="button"

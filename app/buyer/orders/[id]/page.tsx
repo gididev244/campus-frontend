@@ -19,6 +19,7 @@ export default function OrderDetailsPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [paying, setPaying] = useState(false);
 
@@ -50,6 +51,25 @@ export default function OrderDetailsPage() {
 
     fetchOrder();
   }, [params.id, isAuthenticated, router]);
+
+  const handleConfirmReceived = async () => {
+    if (!order) return;
+
+    setConfirming(true);
+    try {
+      await ordersAPI.confirmReceived(order._id);
+      toast.success('Order confirmed as received!');
+      const res = await ordersAPI.getOrder(order._id);
+      setOrder(res.data.order);
+    } catch (error: unknown) {
+      console.error('Failed to confirm received:', error);
+      toast.error('Failed to confirm receipt.');
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Failed to confirm receipt');
+    } finally {
+      setConfirming(false);
+    }
+  };
 
   const handleCancelOrder = async () => {
     if (!order) return;
@@ -315,7 +335,34 @@ export default function OrderDetailsPage() {
           </div>
         )}
 
-        {/* Actions */}
+        {/* Confirm Receipt - Show when order is shipped */}
+        {order.status === 'shipped' && (
+          <div className="rounded-lg border bg-card p-6">
+            <h2 className="text-xl font-semibold mb-4">Confirm Receipt</h2>
+            <p className="text-muted-foreground mb-4">
+              Have you received your order? Click below to confirm delivery.
+            </p>
+            <button
+              onClick={handleConfirmReceived}
+              disabled={confirming}
+              className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {confirming ? (
+                <span className="flex items-center justify-center space-x-2">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>Confirming...</span>
+                </span>
+              ) : (
+                <span className="flex items-center justify-center space-x-2">
+                  <CheckCircle className="h-5 w-5" />
+                  <span>Confirm Received</span>
+                </span>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* Actions - Cancel only for pending orders */}
         {order.status === 'pending' && (
           <div className="rounded-lg border bg-card p-6">
             <h2 className="text-xl font-semibold mb-4">Actions</h2>

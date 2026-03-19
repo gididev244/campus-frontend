@@ -23,12 +23,12 @@ export const REGEX_PATTERNS = {
   // Phone: Kenyan phone numbers (+254XXXXXXXXX, 07XXXXXXXX, 01XXXXXXXX)
   phone: /^(\+254|0)?[17]\d{8}$/,
 
-  // Password: At least 12 chars, 1 lowercase, 1 uppercase, 1 number, 1 special char
+  // Password: At least 6 chars, 1 lowercase, 1 uppercase, 1 number, 1 special char
   passwordLowercase: /[a-z]/,
   passwordUppercase: /[A-Z]/,
   passwordNumber: /[0-9]/,
   passwordSpecial: /[@$!%*?&]/,
-  passwordMinLength: 12,
+  passwordMinLength: 6,
 
   // Price: Positive number with up to 2 decimal places
   price: /^\d+(\.\d{1,2})?$/,

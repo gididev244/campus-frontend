@@ -4,11 +4,10 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { ShoppingBag, Package, MessageSquare, Heart, LogOut } from 'lucide-react';
+import { ShoppingBag, Package, Heart } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ordersAPI } from '@/lib/api/orders';
 import { productsAPI } from '@/lib/api/products';
-import { messagesAPI } from '@/lib/api/messages';
 import type { Order, Product } from '@/types';
 import { formatPrice, formatRelativeTime } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -68,7 +67,7 @@ function BuyerDashboardContent() {
       </div>
 
       {/* Quick Links */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Link href="/orders" className="group">
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -78,19 +77,6 @@ function BuyerDashboardContent() {
             <CardContent>
               <div className="text-2xl font-bold">{orders.length}</div>
               <p className="text-xs text-muted-foreground">total orders</p>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href="/messages" className="group">
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Messages</CardTitle>
-              <MessageSquare className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground">conversations</p>
             </CardContent>
           </Card>
         </Link>

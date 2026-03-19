@@ -25,7 +25,6 @@ interface Notification {
 // Static notification type icons - moved outside component
 const NOTIFICATION_ICONS: Record<string, string> = {
   order: '📦',
-  message: '💬',
   product: '🛍️',
   review: '⭐',
   payout: '💰',

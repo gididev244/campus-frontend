@@ -142,7 +142,6 @@ export { authAPI } from './auth';
 export { productsAPI } from './products';
 export { ordersAPI } from './orders';
 export { usersAPI } from './users';
-export { messagesAPI } from './messages';
 export { reviewsAPI } from './reviews';
 export { categoriesAPI } from './categories';
 export { cartAPI } from './cart';

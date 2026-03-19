@@ -69,6 +69,12 @@ export const ordersAPI = {
   cancelOrder: (id: string, data?: { reason?: string }) =>
     api.put<{ success: boolean; order: Order }>(`/orders/${id}/cancel`, data),
 
+  /**
+   * Buyer confirms order received
+   */
+  confirmReceived: (id: string) =>
+    api.put<{ success: boolean; order: Order; message: string }>(`/orders/${id}/confirm-received`),
+
   // Admin payout API
 
   /**

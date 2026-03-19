@@ -4,7 +4,7 @@
  * Handles all admin-specific API calls including:
  * - Analytics (revenue, users, orders, products)
  * - Review moderation
- * - Message moderation
+ * - Withdrawal management
  *
  * @module lib/api/admin
  */
@@ -121,17 +121,6 @@ interface ReviewsResponse {
   };
 }
 
-interface MessagesResponse {
-  success: boolean;
-  data: any[];
-  pagination: {
-    total: number;
-    page: number;
-    limit: number;
-    pages: number;
-  };
-}
-
 export interface WithdrawalRequest {
   _id: string;
   amount: number;
@@ -213,28 +202,6 @@ export const adminAPI = {
    */
   deleteReview: (id: string) =>
     api.delete<{ success: boolean; message: string }>(`/admin/reviews/${id}`),
-
-  /**
-   * Get all messages for moderation
-   * @param params - Query parameters
-   * @param params.page - Page number (default: 1)
-   * @param params.limit - Items per page (default: 20)
-   * @param params.search - Search by content or user
-   */
-  getAllMessages: (params?: {
-    page?: number;
-    limit?: number;
-    search?: string;
-  }) => api.get<MessagesResponse>('/admin/messages', { params }),
-
-  /**
-   * Flag a message as inappropriate
-   * @param id - Message ID
-   * @param data - Request body
-   * @param data.reason - Reason for flagging
-   */
-  flagMessage: (id: string, data: { reason: string }) =>
-    api.post<{ success: boolean; message: string; data: any }>(`/admin/messages/${id}/flag`, data),
 
   /**
    * Get all withdrawal requests

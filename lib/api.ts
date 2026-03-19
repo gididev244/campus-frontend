@@ -10,7 +10,6 @@
  * - /lib/api/products.ts - Product APIs
  * - /lib/api/orders.ts - Order and payment APIs
  * - /lib/api/users.ts - User management APIs
- * - /lib/api/messages.ts - Messaging APIs
  * - /lib/api/reviews.ts - Review APIs
  * - /lib/api/categories.ts - Category APIs
  * - /lib/api/cart.ts - Shopping cart APIs
@@ -31,7 +30,6 @@ export { authAPI } from './api/auth';
 export { productsAPI } from './api/products';
 export { ordersAPI } from './api/orders';
 export { usersAPI } from './api/users';
-export { messagesAPI } from './api/messages';
 export { reviewsAPI } from './api/reviews';
 export { categoriesAPI } from './api/categories';
 export { cartAPI } from './api/cart';

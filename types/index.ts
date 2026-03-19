@@ -58,26 +58,17 @@ export interface Order {
   cancelledAt?: string;
   deliveredAt?: string;
   cancellationReason?: 'buyer-request' | 'seller-request' | 'payment-failed' | 'other';
-  // Seller payout fields
+  // B2C payout fields
+  b2cTransactionId?: string;
+  b2cStatus?: 'pending' | 'processing' | 'completed' | 'failed';
   sellerPaid?: boolean;
   sellerPaidAt?: string;
-  sellerPaidBy?: User;
   sellerPayoutNotes?: string;
   checkoutSessionId?: string;
   checkoutRequestID?: string;
   createdAt: string;
   updatedAt?: string;
-}
-
-export interface Message {
-  _id: string;
-  sender: User;
-  receiver: User;
-  product?: Product;
-  content: string;
-  isRead: boolean;
-  readAt?: string;
-  createdAt: string;
+  shippedAt?: string;
 }
 
 export interface Review {
@@ -147,7 +138,6 @@ export interface DashboardStats {
     completed: number;
   };
   revenue: number;
-  unreadMessages: number;
 }
 
 // Cart Types
@@ -184,30 +174,9 @@ export interface ShippingAddress {
   landmarks?: string;
 }
 
-// Conversation Types
-export interface Conversation {
-  user: {
-    id: string;
-    name: string;
-    avatar?: string;
-    email: string;
-    averageRating?: number;
-  };
-  lastMessage: {
-    sender: string;
-    receiver: string;
-    product?: any;
-    content: string;
-    isRead: boolean;
-    createdAt: string;
-  };
-  unreadCount: number;
-}
-
 // Notification Types
 export type NotificationType =
   | 'order'
-  | 'message'
   | 'product'
   | 'review'
   | 'payout'
