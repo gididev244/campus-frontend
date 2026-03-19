@@ -257,7 +257,19 @@ export default function ProductDetailClient({ productId }: ProductDetailClientPr
           <div className="space-y-6">
             {/* Title & price */}
             <div>
-              <h1 className="text-3xl font-bold mb-2">{product.title}</h1>
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-3xl font-bold">{product.title}</h1>
+                {product.status === 'sold' && (
+                  <span className="px-3 py-1 bg-red-600 text-white font-bold text-sm rounded-full">
+                    SOLD OUT
+                  </span>
+                )}
+                {product.status === 'pending' && (
+                  <span className="px-3 py-1 bg-yellow-500 text-white font-medium text-sm rounded-full">
+                    Pending
+                  </span>
+                )}
+              </div>
               <div className="flex items-center space-x-4">
                 <span className="text-3xl font-bold text-primary">{formatPrice(product.price)}</span>
                 {product.isNegotiable && (
@@ -353,29 +365,51 @@ export default function ProductDetailClient({ productId }: ProductDetailClientPr
 
               {/* Action buttons */}
               <div className="flex items-center space-x-3">
-                <Button onClick={handleBuyNow} className="flex-1" size="lg">
-                  <ShoppingCart className="h-5 w-5 mr-2" />
-                  Buy Now
-                </Button>
-                <Button
-                  onClick={handleAddToCart}
-                  variant="outline"
-                  className="flex-1"
-                  size="lg"
-                  disabled={addingToCart}
-                >
-                  {addingToCart ? (
-                    <>
-                      <span className="animate-spin mr-2">⏳</span>
-                      Adding...
-                    </>
-                  ) : (
-                    <>
+                {product.status === 'sold' ? (
+                  <div className="flex-1 p-4 bg-muted rounded-lg text-center">
+                    <p className="text-lg font-semibold text-muted-foreground">
+                      This item has been sold
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Check back later for similar items
+                    </p>
+                  </div>
+                ) : product.status === 'pending' ? (
+                  <div className="flex-1 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg text-center">
+                    <p className="text-lg font-semibold text-yellow-700 dark:text-yellow-400">
+                      This item is currently pending
+                    </p>
+                    <p className="text-sm text-yellow-600 dark:text-yellow-500 mt-1">
+                      Another buyer is in the process of purchasing
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <Button onClick={handleBuyNow} className="flex-1" size="lg">
                       <ShoppingCart className="h-5 w-5 mr-2" />
-                      Add to Cart
-                    </>
-                  )}
-                </Button>
+                      Buy Now
+                    </Button>
+                    <Button
+                      onClick={handleAddToCart}
+                      variant="outline"
+                      className="flex-1"
+                      size="lg"
+                      disabled={addingToCart}
+                    >
+                      {addingToCart ? (
+                        <>
+                          <span className="animate-spin mr-2">⏳</span>
+                          Adding...
+                        </>
+                      ) : (
+                        <>
+                          <ShoppingCart className="h-5 w-5 mr-2" />
+                          Add to Cart
+                        </>
+                      )}
+                    </Button>
+                  </>
+                )}
                 <Button
                   onClick={handleLike}
                   variant={liked ? 'primary' : 'outline'}

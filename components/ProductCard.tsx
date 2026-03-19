@@ -108,6 +108,24 @@ const ProductCard = memo(function ProductCard({ product }: ProductCardProps) {
             {product.condition.replace('-', ' ')}
           </span>
 
+          {/* Sold badge */}
+          {product.status === 'sold' && (
+            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+              <span className="px-4 py-2 bg-red-600 text-white font-bold text-lg rounded-lg shadow-lg">
+                SOLD
+              </span>
+            </div>
+          )}
+
+          {/* Pending badge */}
+          {product.status === 'pending' && (
+            <div className="absolute top-2 left-1/2 -translate-x-1/2">
+              <span className="px-3 py-1 bg-yellow-500 text-white font-medium text-sm rounded-full shadow">
+                Pending
+              </span>
+            </div>
+          )}
+
           {/* Like button */}
           {isAuthenticated && (
             <button
@@ -178,7 +196,7 @@ const ProductCard = memo(function ProductCard({ product }: ProductCardProps) {
           {/* Add to cart button */}
           <button
             onClick={handleAddToCart}
-            disabled={addingToCart}
+            disabled={addingToCart || product.status === 'sold' || product.status === 'pending'}
             aria-live="polite"
             aria-label={addingToCart ? 'Adding product to cart' : `Add ${product.title} to cart`}
             type="button"
@@ -189,7 +207,15 @@ const ProductCard = memo(function ProductCard({ product }: ProductCardProps) {
               'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring'
             )}
           >
-            {addingToCart ? (
+            {product.status === 'sold' ? (
+              <span className="flex items-center justify-center space-x-2">
+                <span>Sold Out</span>
+              </span>
+            ) : product.status === 'pending' ? (
+              <span className="flex items-center justify-center space-x-2">
+                <span>Unavailable</span>
+              </span>
+            ) : addingToCart ? (
               <span className="flex items-center justify-center space-x-2">
                 <span className="animate-spin" aria-hidden="true">⏳</span>
                 <span>Adding...</span>
