@@ -78,14 +78,20 @@ export const ordersAPI = {
   // Admin payout API
 
   /**
-   * Get payout ledger for admin
+   * Get payout ledger for admin - returns paginated orders
    */
   getPayoutLedger: (params?: { page?: number; limit?: number }) =>
     api.get<{
       success: boolean;
-      sellerGroups: PayoutLedger['sellerGroups'];
-      totalOrders: number;
-      totalSellers: number;
+      data: Order[];
+      pagination: {
+        total: number;
+        page: number;
+        limit: number;
+        pages: number;
+        hasNext: boolean;
+        hasPrev: boolean;
+      };
       pendingPayoutTotal: number;
     }>('/orders/admin/payouts/ledger', { params }),
 

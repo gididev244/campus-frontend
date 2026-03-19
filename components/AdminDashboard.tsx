@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback, memo } from 'react';
 import Link from 'next/link';
-import { Users, Package, ShoppingCart, TrendingUp, Settings, Wallet, Loader2, ClipboardList, BarChart3, MessageSquare, Star } from 'lucide-react';
+import { Users, Package, ShoppingCart, TrendingUp, Settings, Wallet, Loader2, ClipboardList, BarChart3, Star, DollarSign } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usersAPI } from '@/lib/api/users';
 import { productsAPI } from '@/lib/api/products';
@@ -11,7 +11,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { formatPrice } from '@/lib/utils';
 import { ClientErrorBoundary } from '@/components/ClientErrorBoundary';
 
-// Static dashboard links - moved outside component to prevent recreation
 const DASHBOARD_LINKS = [
   {
     href: '/admin/analytics',
@@ -62,20 +61,20 @@ const DASHBOARD_LINKS = [
     iconClass: 'text-yellow-600',
   },
   {
-    href: '/admin/messages',
-    icon: MessageSquare,
-    title: 'Message Moderation',
-    description: 'View user communications',
-    customClass: 'border-indigo-200 bg-indigo-50/50 dark:border-indigo-900 dark:bg-indigo-950/20',
-    iconClass: 'text-indigo-600',
-  },
-  {
     href: '/admin/payouts',
     icon: Wallet,
     title: 'Seller Payouts',
     description: 'Manage seller payouts and view ledger',
     customClass: 'border-orange-200 bg-orange-50/50 dark:border-orange-900 dark:bg-orange-950/20',
     iconClass: 'text-orange-600',
+  },
+  {
+    href: '/admin/withdrawals',
+    icon: DollarSign,
+    title: 'Withdrawals',
+    description: 'Manage seller withdrawal requests',
+    customClass: 'border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/20',
+    iconClass: 'text-green-600',
   },
 ] as const;
 

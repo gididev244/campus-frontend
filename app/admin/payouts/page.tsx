@@ -1,26 +1,32 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, Check, Phone, Receipt, Package, User, Calendar, ChevronDown, ChevronRight, MessageCircle, Send } from 'lucide-react';
+import { ArrowLeft, Check, Phone, Receipt, Package, User, Calendar, ChevronDown, ChevronRight, MessageCircle, Send, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ordersAPI } from '@/lib/api/orders';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { formatPrice } from '@/lib/utils';
 import { PageHeaderSkeleton } from '@/components/ui/skeleton';
-import type { Order, SellerPayoutGroup } from '@/types';
+import type { Order, SellerPayoutGroup, PayoutOrderSummary } from '@/types';
 import { toast } from '@/components/ui/Toaster';
 import { ClientErrorBoundary } from '@/components/ClientErrorBoundary';
 
-interface LedgerResponse {
+interface ApiLedgerResponse {
   success: boolean;
-  sellerGroups: SellerPayoutGroup[];
-  totalOrders: number;
-  totalSellers: number;
-  pendingPayoutTotal: number;
+  data: Order[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+    hasNext?: boolean;
+    hasPrev?: boolean;
+  };
+  pendingPayoutTotal?: number;
 }
 
 export default function PayoutLedger() {
@@ -34,7 +40,7 @@ export default function PayoutLedger() {
 function PayoutLedgerContent() {
   const router = useRouter();
   const { user } = useAuth();
-  const [sellerGroups, setSellerPayoutGroups] = useState<SellerPayoutGroup[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [pendingTotal, setPendingTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
@@ -45,96 +51,133 @@ function PayoutLedgerContent() {
   const [notes, setNotes] = useState('');
   const [expandedSellers, setExpandedSellers] = useState<Set<string>>(new Set());
 
+  const sellerGroups = useMemo(() => {
+    const groups: SellerPayoutGroup[] = [];
+    const sellerMap = new Map<string, SellerPayoutGroup>();
+
+    for (const order of orders) {
+      if (!order.seller?._id) continue;
+
+      const sellerId = order.seller._id;
+
+      if (!sellerMap.has(sellerId)) {
+        const group: SellerPayoutGroup = {
+          seller: order.seller,
+          sellerId: sellerId,
+          totalOrders: 0,
+          totalEarnings: 0,
+          paidAmount: 0,
+          pendingAmount: 0,
+          orders: [],
+        };
+        sellerMap.set(sellerId, group);
+        groups.push(group);
+      }
+
+      const group = sellerMap.get(sellerId)!;
+      const orderSummary: PayoutOrderSummary = {
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        product: order.product,
+        quantity: order.quantity,
+        totalPrice: order.totalPrice,
+        orderDate: order.createdAt,
+        buyer: order.buyer,
+      };
+      group.orders.push(orderSummary);
+      group.totalOrders++;
+      group.totalEarnings += order.totalPrice;
+      group.pendingAmount += order.totalPrice;
+    }
+
+    return groups;
+  }, [orders]);
+
   useEffect(() => {
     fetchLedger();
   }, [page]);
 
-  const fetchLedger = async () => {
+  const fetchLedger = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await ordersAPI.getPayoutLedger({ page, limit: 20 });
-      const data = response.data as LedgerResponse;
+      const response = await ordersAPI.getPayoutLedger({ page, limit: 50 });
+      const data = response.data as ApiLedgerResponse;
 
-      setSellerPayoutGroups(data.sellerGroups);
-      setPendingTotal(data.pendingPayoutTotal);
-
-      // Calculate total pages (assuming 20 sellers per page)
-      const totalSellers = data.totalSellers;
-      setTotalPages(Math.ceil(totalSellers / 20));
+      setOrders(data.data || []);
+      setPendingTotal(data.pendingPayoutTotal || 0);
+      setTotalPages(data.pagination?.pages || 1);
     } catch (error) {
       console.error('Failed to fetch payout ledger:', error);
-        toast.error('Failed to load payout ledger.');
+      toast.error('Failed to load payout ledger.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [page]);
 
-  const toggleSellerExpansion = (sellerId: string) => {
-    const newExpanded = new Set(expandedSellers);
-    if (newExpanded.has(sellerId)) {
-      newExpanded.delete(sellerId);
-    } else {
-      newExpanded.add(sellerId);
-    }
-    setExpandedSellers(newExpanded);
-  };
+  const toggleSellerExpansion = useCallback((sellerId: string) => {
+    setExpandedSellers(prev => {
+      const newExpanded = new Set(prev);
+      if (newExpanded.has(sellerId)) {
+        newExpanded.delete(sellerId);
+      } else {
+        newExpanded.add(sellerId);
+      }
+      return newExpanded;
+    });
+  }, []);
 
-  const handleMarkSellerPaid = async (sellerId: string) => {
+  const handleMarkSellerPaid = useCallback(async (sellerId: string) => {
     try {
       setProcessing(sellerId);
       await ordersAPI.markSellerPaidBatch(sellerId, notes ? { notes } : undefined);
 
-      // Remove seller from list and update total
-      const updatedGroups = sellerGroups.filter(g => g.seller._id !== sellerId);
-      setSellerPayoutGroups(updatedGroups);
+      const paidGroup = sellerGroups.find(g => g.seller._id === sellerId);
+      const paidOrderIds = paidGroup?.orders.map(o => o.orderId) || [];
 
-      const paidSeller = sellerGroups.find(g => g.seller._id === sellerId);
-      if (paidSeller) {
-        setPendingTotal(prev => prev - paidSeller.pendingAmount);
+      setOrders(prev => prev.filter(o => !paidOrderIds.includes(o._id)));
+
+      if (paidGroup) {
+        setPendingTotal(prev => Math.max(0, prev - paidGroup.pendingAmount));
       }
 
       setShowNotesModal(false);
       setNotes('');
       setSelectedSeller(null);
+      toast.success('Seller marked as paid successfully!');
     } catch (error) {
       console.error('Failed to mark as paid:', error);
-        toast.error('Failed to mark as paid.');
       toast.error('Failed to mark as paid. Please try again.');
     } finally {
       setProcessing(null);
     }
-  };
+  }, [notes, sellerGroups]);
 
-  const openNotesModal = (sellerGroup: SellerPayoutGroup) => {
+  const openNotesModal = useCallback((sellerGroup: SellerPayoutGroup) => {
     setSelectedSeller(sellerGroup);
     setNotes('');
     setShowNotesModal(true);
-  };
+  }, []);
 
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-GB', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
     });
-  };
+  }, []);
 
-  const handleMessageSeller = (sellerId: string, sellerName: string, orderIds: string[]) => {
-    // Navigate to messages with the seller - will open existing conversation or create new one
+  const handleMessageSeller = useCallback((sellerId: string) => {
     router.push(`/messages?userId=${sellerId}&from=payouts`);
-  };
+  }, [router]);
 
-  const handleMessageBuyer = (buyerId: string, buyerName: string) => {
-    // Navigate to messages with the buyer
+  const handleMessageBuyer = useCallback((buyerId: string) => {
     router.push(`/messages?userId=${buyerId}&from=payouts`);
-  };
+  }, [router]);
 
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <PageHeaderSkeleton showSubtitle showActions={false} />
-
-        {/* Summary card skeleton */}
         <div className="mb-8 rounded-lg border bg-card p-6">
           <div className="space-y-4">
             <div className="h-6 bg-muted rounded w-48 animate-pulse" />
@@ -154,8 +197,6 @@ function PayoutLedgerContent() {
             </div>
           </div>
         </div>
-
-        {/* Sellers list skeleton */}
         <div className="space-y-4">
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="rounded-lg border bg-card p-6">
@@ -179,7 +220,6 @@ function PayoutLedgerContent() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Header */}
       <div className="mb-8">
         <Link
           href="/admin"
@@ -194,7 +234,6 @@ function PayoutLedgerContent() {
         </p>
       </div>
 
-      {/* Summary Card */}
       <Card className="mb-8">
         <CardHeader>
           <CardTitle className="text-lg">Pending Payouts Summary</CardTitle>
@@ -207,7 +246,7 @@ function PayoutLedgerContent() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Total Orders to Pay</p>
-              <p className="text-3xl font-bold">{sellerGroups.reduce((sum, g) => sum + g.orders.length, 0)}</p>
+              <p className="text-3xl font-bold">{orders.length}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Total Amount to Pay</p>
@@ -217,16 +256,15 @@ function PayoutLedgerContent() {
           <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
             <h4 className="font-semibold text-sm mb-2">💡 Payment Flow Instructions:</h4>
             <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-              <li><strong>Verify Payment:</strong> Check the M-Pesa Receipt code matches buyer's payment message</li>
-              <li><strong>Message Seller:</strong> Click "Message Seller" to instruct delivery</li>
+              <li><strong>Verify Payment:</strong> Check the M-Pesa Receipt code matches buyer&apos;s payment message</li>
+              <li><strong>Message Seller:</strong> Click &quot;Message Seller&quot; to instruct delivery</li>
               <li><strong>Message Buyer:</strong> Click message icon to confirm they received the goods</li>
-              <li><strong>Mark Paid:</strong> Once confirmed, click "Pay All" to record seller payout</li>
+              <li><strong>Mark Paid:</strong> Once confirmed, click &quot;Pay All&quot; to record seller payout</li>
             </ol>
           </div>
         </CardContent>
       </Card>
 
-      {/* Seller Groups */}
       <div className="space-y-4">
         {sellerGroups.length === 0 ? (
           <Card>
@@ -243,7 +281,10 @@ function PayoutLedgerContent() {
             const isExpanded = expandedSellers.has(sellerGroup.seller._id);
             return (
               <Card key={sellerGroup.seller._id}>
-                <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                <CardHeader
+                  className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => toggleSellerExpansion(sellerGroup.seller._id)}
+                >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4 flex-1">
                       {isExpanded ? (
@@ -258,7 +299,7 @@ function PayoutLedgerContent() {
                             {sellerGroup.orders.length} order(s)
                           </span>
                         </div>
-                        <p className="text-sm text-muted-foreground">{sellerGroup.seller.email}</p>
+                        <p className="text-sm text-muted-foreground">{sellerGroup.seller?.email}</p>
                       </div>
                     </div>
                     <div className="flex items-center space-x-4">
@@ -278,7 +319,10 @@ function PayoutLedgerContent() {
                         className="bg-green-600 hover:bg-green-700"
                       >
                         {processing === sellerGroup.seller._id ? (
-                          'Processing...'
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Processing...
+                          </>
                         ) : (
                           <>
                             <Check className="h-4 w-4 mr-2" />
@@ -300,10 +344,10 @@ function PayoutLedgerContent() {
                         <div className="flex items-center space-x-3 text-sm">
                           <div className="flex items-center space-x-2">
                             <Phone className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-mono">{sellerGroup.seller.phone}</span>
+                            <span className="font-mono">{sellerGroup.seller?.phone || 'N/A'}</span>
                           </div>
                           <Button
-                            onClick={() => handleMessageSeller(sellerGroup.seller._id, sellerGroup.seller.name, sellerGroup.orders.map(o => o.orderId))}
+                            onClick={() => handleMessageSeller(sellerGroup.seller._id)}
                             size="sm"
                             variant="outline"
                             className="h-8 px-3"
@@ -320,10 +364,7 @@ function PayoutLedgerContent() {
                             <tr className="border-b">
                               <th className="text-left py-2 px-3 font-medium text-sm">Order</th>
                               <th className="text-left py-2 px-3 font-medium text-sm">Product</th>
-                              <th className="text-left py-2 px-3 font-medium text-sm">
-                                Buyer
-                                <span className="block text-xs text-muted-foreground font-normal">Click message icon to confirm delivery</span>
-                              </th>
+                              <th className="text-left py-2 px-3 font-medium text-sm">Buyer</th>
                               <th className="text-left py-2 px-3 font-medium text-sm">M-Pesa Receipt</th>
                               <th className="text-left py-2 px-3 font-medium text-sm">Amount</th>
                               <th className="text-left py-2 px-3 font-medium text-sm">Date</th>
@@ -338,7 +379,7 @@ function PayoutLedgerContent() {
                                 </td>
                                 <td className="py-3 px-3">
                                   <div className="flex items-center space-x-2">
-                                    {order.product.images?.[0] && (
+                                    {order.product?.images?.[0] && (
                                       <div className="relative w-8 h-8 rounded overflow-hidden flex-shrink-0">
                                         <Image
                                           src={order.product.images[0]}
@@ -362,31 +403,31 @@ function PayoutLedgerContent() {
                                     <div className="flex items-center space-x-2">
                                       <User className="h-3 w-3 text-muted-foreground" />
                                       <div>
-                                        <div className="text-sm font-medium">{order.buyer.name}</div>
-                                        <div className="text-xs text-muted-foreground">{order.buyer.email}</div>
+                                        <div className="text-sm font-medium">{order.buyer?.name}</div>
+                                        <div className="text-xs text-muted-foreground">{order.buyer?.email}</div>
                                       </div>
                                     </div>
                                     <Button
-                                      onClick={() => handleMessageBuyer(order.buyer._id, order.buyer.name)}
+                                      onClick={() => handleMessageBuyer(order.buyer?._id || '')}
                                       size="sm"
                                       variant="ghost"
                                       className="h-7 w-7 p-0"
-                                      title={`Message ${order.buyer.name}`}
+                                      title={`Message ${order.buyer?.name}`}
                                     >
                                       <Send className="h-3 w-3" />
                                     </Button>
                                   </div>
                                 </td>
                                 <td className="py-3 px-3">
-                                  {'mpesaTransactionId' in order && (order as any).mpesaTransactionId ? (
+                                  {order.mpesaTransactionId ? (
                                     <div className="space-y-1">
                                       <div className="flex items-center space-x-1">
                                         <Receipt className="h-3 w-3 text-green-600" />
-                                        <span className="font-mono text-xs font-semibold">{(order as any).mpesaTransactionId}</span>
+                                        <span className="font-mono text-xs font-semibold">{order.mpesaTransactionId}</span>
                                       </div>
-                                      {(order as any).mpesaPhoneNumber && (
+                                      {order.mpesaPhoneNumber && (
                                         <div className="text-xs text-muted-foreground">
-                                          Paid with: {(order as any).mpesaPhoneNumber}
+                                          Paid with: {order.mpesaPhoneNumber}
                                         </div>
                                       )}
                                     </div>
@@ -417,7 +458,6 @@ function PayoutLedgerContent() {
         )}
       </div>
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex justify-center items-center space-x-2 mt-6">
           <Button
@@ -442,7 +482,6 @@ function PayoutLedgerContent() {
         </div>
       )}
 
-      {/* Notes Modal */}
       {showNotesModal && selectedSeller && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-background rounded-lg p-6 max-w-md w-full mx-4">
@@ -462,7 +501,7 @@ function PayoutLedgerContent() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">To:</span>
-                  <span className="font-mono">{selectedSeller.seller.phone}</span>
+                  <span className="font-mono">{selectedSeller.seller?.phone || 'N/A'}</span>
                 </div>
               </div>
 
@@ -495,7 +534,14 @@ function PayoutLedgerContent() {
                 disabled={processing === selectedSeller.seller._id}
                 className="bg-green-600 hover:bg-green-700"
               >
-                {processing === selectedSeller.seller._id ? 'Processing...' : 'Confirm Paid'}
+                {processing === selectedSeller.seller._id ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  'Confirm Paid'
+                )}
               </Button>
             </div>
           </div>

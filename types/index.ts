@@ -226,6 +226,8 @@ export interface PayoutOrderSummary {
   totalPrice: number;
   orderDate: string;
   buyer: User;
+  mpesaTransactionId?: string;
+  mpesaPhoneNumber?: string;
 }
 
 export interface SellerPayoutGroup {

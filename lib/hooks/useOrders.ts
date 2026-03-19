@@ -93,9 +93,16 @@ export function useOrdersBySession(
 export function usePayoutLedger(
   params?: { page?: number; limit?: number },
   options?: Partial<UseQueryOptions<{
-    sellerGroups: PayoutLedger['sellerGroups'];
-    totalOrders: number;
-    totalSellers: number;
+    success: boolean;
+    data: Order[];
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      pages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
     pendingPayoutTotal: number;
   }>>
 ) {
