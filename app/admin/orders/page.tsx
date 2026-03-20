@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Loader2, Search, Filter, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSocket } from '@/contexts/SocketContext';
 import { ordersAPI } from '@/lib/api/orders';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -12,6 +13,7 @@ import OrderCard from '@/components/admin/OrderCard';
 import OrderFilters from '@/components/admin/OrderFilters';
 import OrderDetailsModal from '@/components/admin/OrderDetailsModal';
 import { ClientErrorBoundary } from '@/components/ClientErrorBoundary';
+import { toast } from '@/components/ui/Toaster';
 import type { Order } from '@/types';
 
 // Order status options for filtering
@@ -22,6 +24,7 @@ const PAYMENT_STATUSES = ['all', 'pending', 'completed', 'failed', 'refunded'] a
 
 function AdminOrdersPage() {
   const { user } = useAuth();
+  const { socket, isConnected } = useSocket();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -74,6 +77,22 @@ function AdminOrdersPage() {
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  // Listen for new orders via socket
+  useEffect(() => {
+    if (!socket || !isConnected || !user) return;
+
+    const handleNewOrder = (data: { orderId: string; orderNumber: string }) => {
+      toast.success(`New order: #${data.orderNumber}`);
+      fetchOrders();
+    };
+
+    socket.on('order:new', handleNewOrder);
+
+    return () => {
+      socket.off('order:new', handleNewOrder);
+    };
+  }, [socket, isConnected, user, fetchOrders]);
 
   // Memoized filtered and sorted orders
   const filteredOrders = useMemo(() => {

@@ -19,8 +19,10 @@ import {
 } from 'lucide-react';
 import { ordersAPI } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSocket } from '@/contexts/SocketContext';
 import { formatPrice } from '@/lib/utils';
 import Button from '@/components/ui/Button';
+import { toast } from '@/components/ui/Toaster';
 import type { Order } from '@/types';
 
 type OrderStatus = 'all' | 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
@@ -28,6 +30,7 @@ type OrderStatus = 'all' | 'pending' | 'confirmed' | 'shipped' | 'delivered' | '
 export default function SellerOrdersPage() {
   const router = useRouter();
   const { isAuthenticated, user } = useAuth();
+  const { socket, isConnected } = useSocket();
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,6 +70,22 @@ export default function SellerOrdersPage() {
 
     fetchOrders();
   }, [isAuthenticated, user, router, fetchOrders]);
+
+  // Listen for new orders via socket
+  useEffect(() => {
+    if (!socket || !isConnected || !user) return;
+
+    const handleNewOrder = (data: { orderId: string; orderNumber: string }) => {
+      toast.success(`New order received: #${data.orderNumber}`);
+      fetchOrders();
+    };
+
+    socket.on('order:new', handleNewOrder);
+
+    return () => {
+      socket.off('order:new', handleNewOrder);
+    };
+  }, [socket, isConnected, user, fetchOrders]);
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     setUpdating(orderId);
