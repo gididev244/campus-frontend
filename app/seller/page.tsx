@@ -156,6 +156,9 @@ function SellerDashboardContent() {
               <CardContent>
                 <div className="text-2xl font-bold">{stats.products.total}</div>
                 <p className="text-xs text-muted-foreground">
+                  {stats.products.pending > 0 && (
+                    <span className="text-yellow-600">{stats.products.pending} pending approval, </span>
+                  )}
                   {stats.products.available} available
                 </p>
               </CardContent>

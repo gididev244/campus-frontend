@@ -131,6 +131,7 @@ export interface DashboardStats {
     total: number;
     available: number;
     sold: number;
+    pending: number;
   };
   orders: {
     total: number;
