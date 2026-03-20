@@ -11,9 +11,6 @@
 
 import { api } from './index';
 
-/**
- * Analytics types
- */
 type TimePeriod = '7d' | '30d' | '90d' | '1y' | 'all';
 
 interface RevenueData {
@@ -121,78 +118,22 @@ interface ReviewsResponse {
   };
 }
 
-  /**
-   * Initiate M-Pesa B2C payout for admin only)
-   */
-export const adminAPI = {
-  getRevenueAnalytics: (params?: { period?: TimePeriod }) =>
-    api.get<RevenueAnalyticsResponse>('/admin/analytics/revenue', { params }),
-
-  getUserAnalytics: (params?: { period?: TimePeriod }) =>
-    api.get<UserAnalyticsResponse>('/admin/analytics/users', { params }),
-
-  getOrderAnalytics: (params?: { period?: TimePeriod }) =>
-    api.get<OrderAnalyticsResponse>('/admin/analytics/orders', { params }),
-
-  getProductAnalytics: () =>
-    api.get<ProductAnalyticsResponse>('/admin/analytics/products'),
-
-  getAllReviews: (params?: {
-    page?: number;
-    limit?: number;
-    rating?: number;
-    productId?: string;
-  }) => api.get<ReviewsResponse>('/admin/reviews', { params }),
-
-  deleteReview: (id: string) =>
-    api.delete<{ success: boolean; message: string }>(`/admin/reviews/${id}`),
-
-  getWithdrawalRequests: (params?: {
-    status?: string;
-    page?: number;
-    limit?: number;
-  }) => api.get<WithdrawalRequestsResponse>('/admin/withdrawals', { params }),
-
-  processWithdrawalRequest: (requestId: string, data: {
-    status: 'processing' | 'completed' | 'cancelled';
-    notes?: string;
-  }) => api.put<{ success: boolean; message: string; data: any }>(`/admin/withdrawals/${requestId}`, data),
-
-  initiateB2CPayout: (sellerId: string, data: {
-    amount: number;
-    notes?: string;
-  }) => api.post<{ success: boolean; message: string; data: B2CPayoutResponse }>(
-    '/payments/b2c/payout',
-    { sellerId, ...data }
-  ),
-
-  getB2CPayoutStatus: (conversationId: string) =>
-    api.get<{ success: boolean; data: B2CPayoutStatus }>(
-      `/payments/b2c/status/${conversationId}`
-    ),
-
-  getUserBalance: (userId: string) =>
-    api.get<{ success: boolean; data: UserBalanceResponse }>(
-      `/admin/users/${userId}/balance`
-    ),
-
-  getUsersWithBalances: (params?: {
-    page?: number;
-    limit?: number;
-    role?: string;
-    search?: string;
-  }) =>
-    api.get<{ success: boolean; data: UserWithBalance[]; pagination: any }>(
-      '/admin/users/with-balances',
-      { params }
-    ),
-};
-
-export interface UserBalanceResponse {
-  }
+export interface WithdrawalRequest {
+  _id: string;
+  amount: number;
+  status: 'pending' | 'processing' | 'completed' | 'cancelled';
+  requestedAt: string;
+  processedAt?: string;
+  completedAt?: string;
+  notes?: string;
+  sellerId: string;
+  sellerName: string;
+  sellerEmail: string;
+  sellerPhone: string;
+  currentBalance: number;
 }
 
-interface WithdrawalRequestsResponse {
+export interface WithdrawalRequestsResponse {
   success: boolean;
   data: WithdrawalRequest[];
   pagination: {
@@ -203,48 +144,19 @@ interface WithdrawalRequestsResponse {
   };
 }
 
-/**
- * Admin API object
- */
 export const adminAPI = {
-  /**
-   * Get revenue analytics
-   * @param params - Query parameters
-   * @param params.period - Time period for analytics (default: '7d')
-   */
   getRevenueAnalytics: (params?: { period?: TimePeriod }) =>
     api.get<RevenueAnalyticsResponse>('/admin/analytics/revenue', { params }),
 
-  /**
-   * Get user analytics
-   * @param params - Query parameters
-   * @param params.period - Time period for analytics (default: '7d')
-   */
   getUserAnalytics: (params?: { period?: TimePeriod }) =>
     api.get<UserAnalyticsResponse>('/admin/analytics/users', { params }),
 
-  /**
-   * Get order analytics
-   * @param params - Query parameters
-   * @param params.period - Time period for analytics (default: '7d')
-   */
   getOrderAnalytics: (params?: { period?: TimePeriod }) =>
     api.get<OrderAnalyticsResponse>('/admin/analytics/orders', { params }),
 
-  /**
-   * Get product analytics
-   */
   getProductAnalytics: () =>
     api.get<ProductAnalyticsResponse>('/admin/analytics/products'),
 
-  /**
-   * Get all reviews for moderation
-   * @param params - Query parameters
-   * @param params.page - Page number (default: 1)
-   * @param params.limit - Items per page (default: 20)
-   * @param params.rating - Filter by rating
-   * @param params.productId - Filter by product
-   */
   getAllReviews: (params?: {
     page?: number;
     limit?: number;
@@ -252,45 +164,20 @@ export const adminAPI = {
     productId?: string;
   }) => api.get<ReviewsResponse>('/admin/reviews', { params }),
 
-  /**
-   * Delete a review (admin only)
-   * @param id - Review ID
-   */
   deleteReview: (id: string) =>
     api.delete<{ success: boolean; message: string }>(`/admin/reviews/${id}`),
 
-  /**
-   * Get all withdrawal requests
-   * @param params - Query parameters
-   * @param params.status - Filter by status (default: 'pending')
-   * @param params.page - Page number (default: 1)
-   * @param params.limit - Items per page (default: 20)
-   */
   getWithdrawalRequests: (params?: {
     status?: string;
     page?: number;
     limit?: number;
   }) => api.get<WithdrawalRequestsResponse>('/admin/withdrawals', { params }),
 
-  /**
-   * Process withdrawal request
-   * @param requestId - Withdrawal request ID
-   * @param data - Request body
-   * @param data.status - New status ('processing' or 'completed')
-   * @param data.notes - Optional notes
-   */
   processWithdrawalRequest: (requestId: string, data: {
     status: 'processing' | 'completed' | 'cancelled';
     notes?: string;
   }) => api.put<{ success: boolean; message: string; data: any }>(`/admin/withdrawals/${requestId}`, data),
 
-  /**
-   * Initiate M-Pesa B2C payout to seller
-   * @param sellerId - Seller ID to pay
-   * @param data - Payout data
-   * @param data.amount - Amount to pay in KES
-   * @param data.notes - Optional notes
-   */
   initiateB2CPayout: (sellerId: string, data: {
     amount: number;
     notes?: string;
@@ -299,10 +186,6 @@ export const adminAPI = {
     { sellerId, ...data }
   ),
 
-  /**
-   * Get B2C payout status
-   * @param conversationId - M-Pesa conversation ID
-   */
   getB2CPayoutStatus: (conversationId: string) =>
     api.get<{ success: boolean; data: B2CPayoutStatus }>(
       `/payments/b2c/status/${conversationId}`
@@ -332,6 +215,7 @@ export interface UserBalanceResponse {
     email: string;
     phone: string;
     role: string;
+    avatar?: string;
   };
   isSeller: boolean;
   balance?: {
@@ -343,7 +227,18 @@ export interface UserBalanceResponse {
   };
   pendingWithdrawals?: any[];
   completedWithdrawals?: any[];
-  recentLedger?: any[];
+  recentLedger?: {
+    type: string;
+    amount: number;
+    balance: number;
+    description?: string;
+    status?: string;
+    orderId?: string;
+    mpesaTransactionId?: string;
+    mpesaReceiptNumber?: string;
+    date: string;
+    metadata?: any;
+  }[];
   withdrawalRequestsCount?: {
     pending: number;
     completed: number;
@@ -383,7 +278,7 @@ export interface B2CPayoutStatus {
   withdrawalId: string;
   amount: number;
   status: string;
-  b2cStatus: string;
+  b2cStatus?: string;
   b2cTransactionId?: string;
   seller: string;
   requestedAt: string;

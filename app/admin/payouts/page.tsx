@@ -55,10 +55,6 @@ function PayoutLedgerContent() {
   const [payoutMode, setPayoutMode] = useState<'manual' | 'b2c'>('manual');
 
   const sellerGroups = useMemo(() => {
-  const [b2cProcessing, setB2cProcessing] = useState<string | null>(null);
-  const [payoutMode, setPayoutMode] = useState<'manual' | 'b2c'>('manual');
-
-  const sellerGroups = useMemo(() => {
     const groups: SellerPayoutGroup[] = [];
     const sellerMap = new Map<string, SellerPayoutGroup>();
 
@@ -172,7 +168,7 @@ function PayoutLedgerContent() {
 
       const paidGroup = sellerGroups.find(g => g.seller._id === sellerId);
 
-      if (response.data.b2cStatus === 'processing') {
+      if (response.data.data.status === 'processing') {
         toast.success('B2C payment initiated! Seller will receive M-Pesa shortly.');
       } else {
         toast.success('B2C payment completed successfully!');
@@ -643,3 +639,4 @@ function PayoutLedgerContent() {
     </div>
   );
 }
+
