@@ -222,67 +222,83 @@ function EarningsPageContent() {
         </div>
 
         {/* Withdrawal Form */}
-        {balance.currentBalance > 0 && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle>Request Withdrawal</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Amount to Withdraw (Max: {formatPrice(balance.currentBalance)})
-                  </label>
-                  <input
-                    type="number"
-                    value={withdrawalAmount}
-                    onChange={(e) => setWithdrawalAmount(e.target.value)}
-                    max={balance.currentBalance}
-                    min="1"
-                    step="0.01"
-                    placeholder="Enter amount"
-                    className="w-full px-4 py-2 rounded-lg border bg-background"
-                  />
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Request Withdrawal</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {balance.currentBalance <= 0 && (
+                <div className="p-4 rounded-lg bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800">
+                  <div className="flex items-start space-x-3">
+                    <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                        Insufficient Balance
+                      </p>
+                      <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                        You need earnings before you can request a withdrawal. 
+                        Sell some products to start earning!
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Notes (Optional)
-                  </label>
-                  <textarea
-                    value={withdrawalNotes}
-                    onChange={(e) => setWithdrawalNotes(e.target.value)}
-                    placeholder="Any additional information..."
-                    rows={3}
-                    className="w-full px-4 py-2 rounded-lg border bg-background"
-                  />
-                </div>
-                <div className="flex space-x-3">
-                  <Button
-                    onClick={handleWithdrawal}
-                    disabled={withdrawing || !withdrawalAmount}
-                    className="flex-1"
-                  >
-                    {withdrawing ? 'Processing...' : 'Submit Withdrawal Request'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setWithdrawalAmount('');
-                      setWithdrawalNotes('');
-                    }}
-                    disabled={withdrawing}
-                  >
-                    Clear
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Withdrawal requests are typically processed within 1-3 business days.
-                  You will receive a notification when your withdrawal is completed.
-                </p>
+              )}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Amount to Withdraw (Max: {formatPrice(balance.currentBalance || 0)})
+                </label>
+                <input
+                  type="number"
+                  value={withdrawalAmount}
+                  onChange={(e) => setWithdrawalAmount(e.target.value)}
+                  max={balance.currentBalance || 0}
+                  min="1"
+                  step="0.01"
+                  placeholder="Enter amount"
+                  className="w-full px-4 py-2 rounded-lg border bg-background"
+                  disabled={balance.currentBalance <= 0}
+                />
               </div>
-            </CardContent>
-          </Card>
-        )}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Notes (Optional)
+                </label>
+                <textarea
+                  value={withdrawalNotes}
+                  onChange={(e) => setWithdrawalNotes(e.target.value)}
+                  placeholder="Any additional information..."
+                  rows={3}
+                  className="w-full px-4 py-2 rounded-lg border bg-background"
+                  disabled={balance.currentBalance <= 0}
+                />
+              </div>
+              <div className="flex space-x-3">
+                <Button
+                  onClick={handleWithdrawal}
+                  disabled={withdrawing || !withdrawalAmount || balance.currentBalance <= 0}
+                  className="flex-1"
+                >
+                  {withdrawing ? 'Processing...' : 'Submit Withdrawal Request'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setWithdrawalAmount('');
+                    setWithdrawalNotes('');
+                  }}
+                  disabled={withdrawing}
+                >
+                  Clear
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Withdrawal requests are typically processed within 1-3 business days.
+                You will receive a notification when your withdrawal is completed.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Withdrawal Requests */}
         {withdrawalRequests.length > 0 && (
