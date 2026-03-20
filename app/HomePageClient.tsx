@@ -11,7 +11,12 @@ import type { Product, Category } from '@/types';
 import Button from '@/components/ui/Button';
 import { toast } from '@/lib/toast';
 
-// Static features data - moved outside component to prevent recreation
+interface PlatformStats {
+  products: number;
+  users: number;
+  transactions: number;
+}
+
 const FEATURES = [
   {
     icon: Shield,
@@ -35,28 +40,30 @@ const FEATURES = [
   },
 ] as const;
 
-// Static stats data - moved outside component
-const STATS = [
-  { value: '10K+', label: 'Products' },
-  { value: '5K+', label: 'Users' },
-  { value: '1K+', label: 'Transactions' },
-] as const;
+const formatStat = (num: number): string => {
+  if (num >= 1000) {
+    return `${(num / 1000).toFixed(1)}K+`;
+  }
+  return `${num}+`;
+};
 
 const HomePageClient = memo(function HomePageClient() {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<(Category & { productCount: number })[]>([]);
+  const [stats, setStats] = useState<PlatformStats>({ products: 0, users: 0, transactions: 0 });
   const [loading, setLoading] = useState(true);
 
-  // Fetch data with useCallback to prevent unnecessary re-creation
   const fetchData = useCallback(async () => {
     try {
-      const [productsRes, categoriesRes] = await Promise.all([
+      const [productsRes, categoriesRes, statsRes] = await Promise.all([
         productsAPI.getProducts({ page: 1, limit: 8, sortBy: 'createdAt' }),
         categoriesAPI.getCategories(),
+        productsAPI.getPlatformStats(),
       ]);
 
       setFeaturedProducts(productsRes.data.data);
       setCategories(categoriesRes.data.categories.slice(0, 6));
+      setStats(statsRes.data.stats);
     } catch (error) {
       console.error('Failed to fetch data:', error);
         toast.error('Failed to load data.');
@@ -69,7 +76,12 @@ const HomePageClient = memo(function HomePageClient() {
     fetchData();
   }, [fetchData]);
 
-  // Memoize category display to prevent unnecessary re-nders
+  const statsDisplay = useMemo(() => [
+    { value: formatStat(stats.products), label: 'Products' },
+    { value: formatStat(stats.users), label: 'Users' },
+    { value: formatStat(stats.transactions), label: 'Transactions' },
+  ], [stats]);
+
   const categoriesDisplay = useMemo(() => {
     return categories.map((category) => (
       <Link
@@ -124,7 +136,7 @@ const HomePageClient = memo(function HomePageClient() {
 
             {/* Quick stats */}
             <dl className="grid grid-cols-3 gap-4 pt-8" aria-label="Platform statistics">
-              {STATS.map((stat) => (
+              {statsDisplay.map((stat) => (
                 <div key={stat.label} className="text-center">
                   <dt className="text-2xl font-bold text-primary">{stat.value}</dt>
                   <dd className="text-sm text-muted-foreground">{stat.label}</dd>
@@ -196,7 +208,7 @@ const HomePageClient = memo(function HomePageClient() {
         <div className="bg-gradient-to-r from-primary to-purple-600 rounded-2xl p-12 text-center text-white">
           <h2 id="cta-heading" className="text-3xl font-bold mb-4">Start Selling Today</h2>
           <p className="text-lg mb-6 opacity-90">
-            Join thousands of students already selling on Campus Market
+            Turn your unused items into cash on Campus Market
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center" role="group" aria-label="Call to action buttons">
             <Link href="/register">

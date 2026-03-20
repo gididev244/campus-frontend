@@ -87,4 +87,17 @@ export const productsAPI = {
       '/products/admin/bulk-revert',
       { productIds }
     ),
+
+  /**
+   * Get platform statistics (public)
+   */
+  getPlatformStats: () =>
+    api.get<{
+      success: boolean;
+      stats: {
+        products: number;
+        users: number;
+        transactions: number;
+      };
+    }>('/products/stats/platform'),
 };
