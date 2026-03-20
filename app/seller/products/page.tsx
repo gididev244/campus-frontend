@@ -38,7 +38,11 @@ function SellerProductsPageContent() {
       return;
     }
 
-    if (user?.role !== 'seller' && user?.role !== 'admin') {
+    if (!user) {
+      return;
+    }
+
+    if (user.role !== 'seller' && user.role !== 'admin') {
       router.push('/products');
       return;
     }
