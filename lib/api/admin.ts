@@ -124,34 +124,71 @@ interface ReviewsResponse {
   /**
    * Initiate M-Pesa B2C payout for admin only)
    */
+export const adminAPI = {
+  getRevenueAnalytics: (params?: { period?: TimePeriod }) =>
+    api.get<RevenueAnalyticsResponse>('/admin/analytics/revenue', { params }),
+
+  getUserAnalytics: (params?: { period?: TimePeriod }) =>
+    api.get<UserAnalyticsResponse>('/admin/analytics/users', { params }),
+
+  getOrderAnalytics: (params?: { period?: TimePeriod }) =>
+    api.get<OrderAnalyticsResponse>('/admin/analytics/orders', { params }),
+
+  getProductAnalytics: () =>
+    api.get<ProductAnalyticsResponse>('/admin/analytics/products'),
+
+  getAllReviews: (params?: {
+    page?: number;
+    limit?: number;
+    rating?: number;
+    productId?: string;
+  }) => api.get<ReviewsResponse>('/admin/reviews', { params }),
+
+  deleteReview: (id: string) =>
+    api.delete<{ success: boolean; message: string }>(`/admin/reviews/${id}`),
+
+  getWithdrawalRequests: (params?: {
+    status?: string;
+    page?: number;
+    limit?: number;
+  }) => api.get<WithdrawalRequestsResponse>('/admin/withdrawals', { params }),
+
+  processWithdrawalRequest: (requestId: string, data: {
+    status: 'processing' | 'completed' | 'cancelled';
+    notes?: string;
+  }) => api.put<{ success: boolean; message: string; data: any }>(`/admin/withdrawals/${requestId}`, data),
+
   initiateB2CPayout: (sellerId: string, data: {
     amount: number;
     notes?: string;
-  }) => api.post<{ success: boolean; message: string; data: B2CPayoutResponse }>(`/payments/b2c/payout`, data),
+  }) => api.post<{ success: boolean; message: string; data: B2CPayoutResponse }>(
+    '/payments/b2c/payout',
+    { sellerId, ...data }
+  ),
 
-export interface B2CPayoutResponse {
-  success: boolean;
-  message: string;
-  data: {
-    conversationID: string;
-    originatorConversationID: string;
-    responseCode: string;
-    responseDescription: string;
-    withdrawalId: string;
-    amount: number;
-    status: 'processing' | 'completed' | 'failed';
-    b2cStatus?: string;
-    b2cTransactionId?: string;
-    sellerId: string;
-    sellerName?: string;
-    sellerPhone?: string;
-    requestedAt?: string;
-    completedAt?: string;
-    metadata?: {
-      b2cResultCode?: number;
-      b2cResultDesc?: string;
-      b2cTransactionID?: string;
-    };
+  getB2CPayoutStatus: (conversationId: string) =>
+    api.get<{ success: boolean; data: B2CPayoutStatus }>(
+      `/payments/b2c/status/${conversationId}`
+    ),
+
+  getUserBalance: (userId: string) =>
+    api.get<{ success: boolean; data: UserBalanceResponse }>(
+      `/admin/users/${userId}/balance`
+    ),
+
+  getUsersWithBalances: (params?: {
+    page?: number;
+    limit?: number;
+    role?: string;
+    search?: string;
+  }) =>
+    api.get<{ success: boolean; data: UserWithBalance[]; pagination: any }>(
+      '/admin/users/with-balances',
+      { params }
+    ),
+};
+
+export interface UserBalanceResponse {
   }
 }
 
@@ -270,7 +307,68 @@ export const adminAPI = {
     api.get<{ success: boolean; data: B2CPayoutStatus }>(
       `/payments/b2c/status/${conversationId}`
     ),
+
+  getUserBalance: (userId: string) =>
+    api.get<{ success: boolean; data: UserBalanceResponse }>(
+      `/admin/users/${userId}/balance`
+    ),
+
+  getUsersWithBalances: (params?: {
+    page?: number;
+    limit?: number;
+    role?: string;
+    search?: string;
+  }) =>
+    api.get<{ success: boolean; data: UserWithBalance[]; pagination: any }>(
+      '/admin/users/with-balances',
+      { params }
+    ),
 };
+
+export interface UserBalanceResponse {
+  user: {
+    _id: string;
+    name: string;
+    email: string;
+    phone: string;
+    role: string;
+  };
+  isSeller: boolean;
+  balance?: {
+    totalEarnings: number;
+    currentBalance: number;
+    pendingWithdrawals: number;
+    withdrawnTotal: number;
+    totalOrders: number;
+  };
+  pendingWithdrawals?: any[];
+  completedWithdrawals?: any[];
+  recentLedger?: any[];
+  withdrawalRequestsCount?: {
+    pending: number;
+    completed: number;
+    total: number;
+  };
+}
+
+export interface UserWithBalance {
+  _id: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+  location?: string;
+  avatar?: string;
+  isVerified?: boolean;
+  isActive?: boolean;
+  createdAt: string;
+  balance?: {
+    currentBalance: number;
+    totalEarnings: number;
+    withdrawnTotal: number;
+    pendingWithdrawals: number;
+  } | null;
+}
 
 export interface B2CPayoutResponse {
   withdrawalId: string;

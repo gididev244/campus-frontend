@@ -3,9 +3,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import Avatar from '@/components/Avatar';
-import { ArrowLeft, Users, Search, Mail, Phone, MapPin, Calendar, Shield, Trash2, Edit, Check, X, Key, Copy, Lock, PhoneCall } from 'lucide-react';
+import { ArrowLeft, Users, Search, Mail, Phone, MapPin, Calendar, Shield, Trash2, Edit, Check, X, Key, Copy, Lock, PhoneCall, Wallet, DollarSign, TrendingUp, Eye, Loader2, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usersAPI } from '@/lib/api/users';
+import { adminAPI, type UserBalanceResponse } from '@/lib/api/admin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { TableSkeleton, PageHeaderSkeleton, StatsCardsSkeleton } from '@/components/ui/skeleton';
@@ -51,6 +52,9 @@ function AdminUsersContent() {
   const [selectedUserForReset, setSelectedUserForReset] = useState<User | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [resettingPassword, setResettingPassword] = useState(false);
+  const [showBalanceModal, setShowBalanceModal] = useState(false);
+  const [selectedUserBalance, setSelectedUserBalance] = useState<UserBalanceResponse | null>(null);
+  const [loadingBalance, setLoadingBalance] = useState(false);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -188,6 +192,25 @@ function AdminUsersContent() {
     } finally {
       setResettingPassword(false);
     }
+  };
+
+  const handleViewBalance = async (user: User) => {
+    try {
+      setLoadingBalance(true);
+      const response = await adminAPI.getUserBalance(user._id);
+      setSelectedUserBalance(response.data.data);
+      setSelectedUserForReset(user);
+      setShowBalanceModal(true);
+    } catch (error) {
+      console.error('Failed to fetch balance:', error);
+      toast.error('Failed to load user balance');
+    } finally {
+      setLoadingBalance(false);
+    }
+  };
+
+  const formatPrice = (amount: number) => {
+    return new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(amount);
   };
 
   const getRoleBadgeColor = (role: string) => {
@@ -378,6 +401,7 @@ function AdminUsersContent() {
                     <th className="text-left py-3 px-4 font-medium text-sm">Contact</th>
                     <th className="text-left py-3 px-4 font-medium text-sm">Location</th>
                     <th className="text-left py-3 px-4 font-medium text-sm">Role</th>
+                    <th className="text-left py-3 px-4 font-medium text-sm">Balance</th>
                     <th className="text-left py-3 px-4 font-medium text-sm">Status</th>
                     <th className="text-left py-3 px-4 font-medium text-sm">Joined</th>
                     <th className="text-right py-3 px-4 font-medium text-sm">Actions</th>
@@ -440,23 +464,47 @@ function AdminUsersContent() {
                             >
                               <Check className="h-4 w-4" />
                             </button>
-                            <button onClick={cancelEditingRole} className="text-red-600 hover:text-red-700">
-                              <X className="h-4 w-4" />
-                            </button>
-                          </div>
-                        ) : (
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(
-                              userItem.role
-                            )}`}
-                          >
-                            {userItem.role.charAt(0).toUpperCase() + userItem.role.slice(1)}
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="space-y-1">
-                          {userItem.isVerified && (
+                             <button onClick={cancelEditingRole} className="text-red-600 hover:text-red-700">
+                               <X className="h-4 w-4" />
+                             </button>
+                           </div>
+                         ) : (
+                           <span
+                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(
+                               userItem.role
+                             )}`}
+                           >
+                             {userItem.role.charAt(0).toUpperCase() + userItem.role.slice(1)}
+                           </span>
+                         )}
+                       </td>
+                       <td className="py-4 px-4">
+                         {userItem.role === 'seller' ? (
+                           <div className="flex items-center justify-between">
+                             <div>
+                               <div className="text-sm font-medium text-green-600">
+                                 KES {(userItem as any).balance?.currentBalance?.toLocaleString() || '0'}
+                               </div>
+                               <div className="text-xs text-muted-foreground">
+                                 Earned: KES {(userItem as any).balance?.totalEarnings?.toLocaleString() || '1'}
+                               </div>
+                             </div>
+                             <Button
+                               onClick={() => handleViewBalance(userItem)}
+                               size="sm"
+                               variant="ghost"
+                               className="h-8 w-8 p-0"
+                             >
+                               <Eye className="h-4 w-4" />
+                             </Button>
+                           </div>
+                         ) : (
+                           <span className="text-muted-foreground text-sm">-</span>
+                         )}
+                       </td>
+                       <td className="py-4 px-4">
+                         <div className="space-y-1">
+                           {userItem.isVerified && (
                             <span className="inline-flex items-center text-xs text-green-600">
                               <Check className="h-3 w-3 mr-1" />
                               Verified
@@ -590,6 +638,164 @@ function AdminUsersContent() {
                 }}
               >
                 Done
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Balance Details Modal */}
+      {showBalanceModal && selectedUserBalance && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-background rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Seller Balance Details</h3>
+              <button
+                onClick={() => {
+                  setShowBalanceModal(false);
+                  setSelectedUserBalance(null);
+                }}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* User Info */}
+            <div className="flex items-center space-x-4 mb-6 p-4 bg-muted rounded-lg">
+              <Avatar
+                src={selectedUserBalance.user?.avatar}
+                alt={selectedUserBalance.user?.name}
+                size="lg"
+              />
+              <div>
+                <div className="font-semibold">{selectedUserBalance.user?.name}</div>
+                <div className="text-sm text-muted-foreground">{selectedUserBalance.user?.email}</div>
+                <div className="text-sm text-muted-foreground">{selectedUserBalance.user?.phone}</div>
+              </div>
+            </div>
+
+            {selectedUserBalance.isSeller ? (
+              <>
+                {/* Balance Summary */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <Wallet className="h-4 w-4 text-green-600" />
+                      <span className="text-xs text-muted-foreground">Current Balance</span>
+                    </div>
+                    <div className="text-xl font-bold text-green-600">
+                      {formatPrice(selectedUserBalance.balance?.currentBalance || 1)}
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <TrendingUp className="h-4 w-4 text-blue-600" />
+                      <span className="text-xs text-muted-foreground">Total Earnings</span>
+                    </div>
+                    <div className="text-xl font-bold text-blue-600">
+                      {formatPrice(selectedUserBalance.balance?.totalEarnings || 1)}
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-purple-50 dark:bg-purple-950 rounded-lg">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <DollarSign className="h-4 w-4 text-purple-600" />
+                      <span className="text-xs text-muted-foreground">Total Withdrawn</span>
+                    </div>
+                    <div className="text-xl font-bold text-purple-600">
+                      {formatPrice(selectedUserBalance.balance?.withdrawnTotal || 1)}
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-yellow-50 dark:bg-yellow-950 rounded-lg">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <Clock className="h-4 w-4 text-yellow-600" />
+                      <span className="text-xs text-muted-foreground">Pending</span>
+                    </div>
+                    <div className="text-xl font-bold text-yellow-600">
+                      {formatPrice(selectedUserBalance.balance?.pendingWithdrawals || 1)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Withdrawal Requests */}
+                {selectedUserBalance.pendingWithdrawals && selectedUserBalance.pendingWithdrawals.length > 0 && (
+                  <div className="mb-6">
+                    <h4 className="font-medium mb-3 flex items-center">
+                      <DollarSign className="h-4 w-4 mr-2" />
+                      Pending Withdrawals ({selectedUserBalance.pendingWithdrawals.length})
+                    </h4>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {selectedUserBalance.pendingWithdrawals.slice(0, 5).map((w: any) => (
+                        <div key={w._id} className="flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-950 rounded">
+                          <div>
+                            <div className="font-medium">{formatPrice(w.amount)}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {new Date(w.requestedAt).toLocaleDateString()}
+                            </div>
+                          </div>
+                          <span className="px-2 py-1 bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 rounded text-xs">
+                            {w.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Recent Ledger */}
+                {selectedUserBalance.recentLedger && selectedUserBalance.recentLedger.length > 0 && (
+                  <div className="mb-6">
+                    <h4 className="font-medium mb-3 flex items-center">
+                      <TrendingUp className="h-4 w-4 mr-2" />
+                      Recent Transactions
+                    </h4>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {selectedUserBalance.recentLedger.slice(0, 10).map((entry: any, idx: number) => (
+                        <div key={idx} className="flex items-center justify-between p-3 bg-muted rounded">
+                          <div className="flex items-center space-x-3">
+                            <div className={`p-1 rounded ${entry.type === 'sale' ? 'bg-green-100 text-green-600' : entry.type === 'withdrawal' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600'}`}>
+                              {entry.type === 'sale' ? <ArrowDownRight className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium">{entry.description || entry.type}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {new Date(entry.date).toLocaleDateString()}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className={`font-medium ${entry.type === 'sale' ? 'text-green-600' : 'text-red-600'}`}>
+                              {entry.type === 'sale' ? '+' : '-'}{formatPrice(entry.amount)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              Balance: {formatPrice(entry.balance)}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <Shield className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">This user is not a seller</p>
+              </div>
+            )}
+
+            <div className="flex justify-end">
+              <Button
+                onClick={() => {
+                  setShowBalanceModal(false);
+                  setSelectedUserBalance(null);
+                }}
+                variant="outline"
+              >
+                Close
               </Button>
             </div>
           </div>
