@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, Package, Search, Eye, ShoppingCart, Image as ImageIcon, Check, X, Trash2, ExternalLink, Calendar, DollarSign } from 'lucide-react';
+import { ArrowLeft, Package, Search, Eye, ShoppingCart, Image as ImageIcon, Check, X, Trash2, ExternalLink, Calendar, DollarSign, RotateCcw, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { productsAPI } from '@/lib/api/products';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -34,6 +34,9 @@ function AdminProductsContent() {
   const [updatingProduct, setUpdatingProduct] = useState<string | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
+  const [bulkProcessing, setBulkProcessing] = useState(false);
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -206,6 +209,56 @@ function AdminProductsContent() {
   const availableCount = products.filter(p => p && p.status === 'available').length;
   const soldCount = products.filter(p => p && p.status === 'sold').length;
 
+  const pendingProducts = useMemo(() => 
+    products.filter(p => p && p.status === 'pending'),
+    [products]
+  );
+
+  const toggleProductSelection = useCallback((productId: string) => {
+    setSelectedProducts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(productId)) {
+        newSet.delete(productId);
+      } else {
+        newSet.add(productId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const selectAllPending = useCallback(() => {
+    setSelectedProducts(new Set(pendingProducts.map(p => p._id)));
+  }, [pendingProducts]);
+
+  const deselectAll = useCallback(() => {
+    setSelectedProducts(new Set());
+  }, []);
+
+  const handleBulkRevert = useCallback(async () => {
+    if (selectedProducts.size === 0) return;
+
+    try {
+      setBulkProcessing(true);
+      const response = await productsAPI.bulkRevertProducts(Array.from(selectedProducts));
+      
+      const count = response.data.count;
+      setMessage({ type: 'success', text: `${count} product(s) reverted to available` });
+      
+      setProducts(prev => prev.map(p => 
+        selectedProducts.has(p._id) ? { ...p, status: 'available' } : p
+      ));
+      
+      setSelectedProducts(new Set());
+      setShowBulkConfirm(false);
+    } catch (error) {
+      console.error('Failed to bulk revert products:', error);
+      toast.error('Failed to revert products. Please try again.');
+      setMessage({ type: 'error', text: 'Failed to revert products. Please try again.' });
+    } finally {
+      setBulkProcessing(false);
+    }
+  }, [selectedProducts]);
+
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
@@ -297,19 +350,44 @@ function AdminProductsContent() {
               />
             </div>
 
-            <select
-              value={statusFilter}
-              onChange={e => {
-                setStatusFilter(e.target.value);
-                setPage(1);
-              }}
-              className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="all">All Status</option>
-              <option value="pending">Pending Review</option>
-              <option value="available">Available</option>
-              <option value="sold">Sold</option>
-            </select>
+            <div className="flex gap-2">
+              <select
+                value={statusFilter}
+                onChange={e => {
+                  setStatusFilter(e.target.value);
+                  setPage(1);
+                  setSelectedProducts(new Set());
+                }}
+                className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="all">All Status</option>
+                <option value="pending">Pending Review</option>
+                <option value="available">Available</option>
+                <option value="sold">Sold</option>
+              </select>
+
+              {pendingProducts.length > 0 && (statusFilter === 'pending' || statusFilter === 'all') && (
+                <div className="flex gap-1">
+                  <Button
+                    onClick={selectAllPending}
+                    variant="outline"
+                    size="sm"
+                    className="whitespace-nowrap"
+                  >
+                    Select All Pending
+                  </Button>
+                  {selectedProducts.size > 0 && (
+                    <Button
+                      onClick={deselectAll}
+                      variant="outline"
+                      size="sm"
+                    >
+                      Deselect
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -335,6 +413,18 @@ function AdminProductsContent() {
             <Card key={product._id} className="overflow-hidden">
               <CardContent className="p-0">
                 <div className="flex flex-col md:flex-row">
+                  {/* Selection Checkbox for Pending Products */}
+                  {product.status === 'pending' && (
+                    <div className="flex items-center px-4 bg-muted/30 border-r">
+                      <input
+                        type="checkbox"
+                        checked={selectedProducts.has(product._id)}
+                        onChange={() => toggleProductSelection(product._id)}
+                        className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                      />
+                    </div>
+                  )}
+
                   {/* Product Image */}
                   <div className="w-full md:w-48 h-48 relative flex-shrink-0">
                     {product.images?.[0] ? (
@@ -533,6 +623,82 @@ function AdminProductsContent() {
           >
             Next
           </Button>
+        </div>
+      )}
+
+      {/* Bulk Action Bar */}
+      {selectedProducts.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg z-40">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <span className="font-medium">
+                  {selectedProducts.size} product{selectedProducts.size !== 1 ? 's' : ''} selected
+                </span>
+                <Button
+                  onClick={deselectAll}
+                  variant="outline"
+                  size="sm"
+                >
+                  Clear Selection
+                </Button>
+              </div>
+              <Button
+                onClick={() => setShowBulkConfirm(true)}
+                className="bg-green-600 hover:bg-green-700"
+                disabled={bulkProcessing}
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Revert to Available
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Revert Confirmation Modal */}
+      {showBulkConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <Card className="max-w-md w-full mx-4">
+            <CardContent className="p-6">
+              <h3 className="text-lg font-semibold mb-4">
+                Confirm Bulk Revert
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                Are you sure you want to revert <strong>{selectedProducts.size}</strong> pending product{selectedProducts.size !== 1 ? 's' : ''} to available status?
+              </p>
+              <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-6">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  This will make all selected products visible to buyers immediately.
+                </p>
+              </div>
+              <div className="flex justify-end space-x-3">
+                <Button
+                  onClick={() => setShowBulkConfirm(false)}
+                  variant="outline"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleBulkRevert}
+                  disabled={bulkProcessing}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {bulkProcessing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Reverting...
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Confirm Revert
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

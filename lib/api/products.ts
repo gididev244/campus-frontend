@@ -78,4 +78,13 @@ export const productsAPI = {
    */
   getRelatedProducts: (id: string) =>
     api.get<{ success: boolean; products: Product[] }>(`/products/${id}/related`),
+
+  /**
+   * Bulk revert products from pending to available (admin only)
+   */
+  bulkRevertProducts: (productIds: string[]) =>
+    api.put<{ success: boolean; message: string; count: number }>(
+      '/products/admin/bulk-revert',
+      { productIds }
+    ),
 };
