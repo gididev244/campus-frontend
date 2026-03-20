@@ -163,52 +163,6 @@ function AdminProductsContent() {
     }
   }, [products]);
 
-  const getStatusBadgeColor = (status: string) => {
-    switch (status) {
-      case 'available':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'sold':
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
-    }
-  };
-
-
-  if (!isAdmin) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <Card className="max-w-md mx-auto">
-          <CardContent className="py-8">
-            <div className="text-center">
-              <Package className="h-12 w-12 mx-auto text-destructive mb-4" />
-              <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-              <p className="text-muted-foreground">You don't have permission to access this page.</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <PageHeaderSkeleton showSubtitle showActions={false} />
-        <StatsCardsSkeleton count={4} />
-        <div className="mt-8">
-          <ProductCardHorizontalSkeleton count={5} />
-        </div>
-      </div>
-    );
-  }
-
-  const pendingCount = products.filter(p => p && p.status === 'pending').length;
-  const availableCount = products.filter(p => p && p.status === 'available').length;
-  const soldCount = products.filter(p => p && p.status === 'sold').length;
-
   const pendingProducts = useMemo(() => 
     products.filter(p => p && p.status === 'pending'),
     [products]
@@ -258,6 +212,51 @@ function AdminProductsContent() {
       setBulkProcessing(false);
     }
   }, [selectedProducts]);
+
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'available':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'sold':
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
+    }
+  };
+
+  if (!isAdmin) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card className="max-w-md mx-auto">
+          <CardContent className="py-8">
+            <div className="text-center">
+              <Package className="h-12 w-12 mx-auto text-destructive mb-4" />
+              <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+              <p className="text-muted-foreground">You don't have permission to access this page.</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <PageHeaderSkeleton showSubtitle showActions={false} />
+        <StatsCardsSkeleton count={4} />
+        <div className="mt-8">
+          <ProductCardHorizontalSkeleton count={5} />
+        </div>
+      </div>
+    );
+  }
+
+  const pendingCount = products.filter(p => p && p.status === 'pending').length;
+  const availableCount = products.filter(p => p && p.status === 'available').length;
+  const soldCount = products.filter(p => p && p.status === 'sold').length;
 
   return (
     <div className="container mx-auto px-4 py-8">
