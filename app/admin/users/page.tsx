@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import Avatar from '@/components/Avatar';
-import { ArrowLeft, Users, Search, Mail, Phone, MapPin, Calendar, Shield, Trash2, Edit, Check, X, Key, Copy, Lock, PhoneCall, Wallet, DollarSign, TrendingUp, Eye, Loader2, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { ArrowLeft, Users, Search, Mail, Phone, MapPin, Calendar, Shield, Trash2, Edit, Check, X, Key, Copy, Lock, PhoneCall, Wallet, DollarSign, TrendingUp, Eye, Loader2, ArrowUpRight, ArrowDownRight, Receipt, Clock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usersAPI } from '@/lib/api/users';
 import { adminAPI, type UserBalanceResponse } from '@/lib/api/admin';
@@ -752,7 +752,7 @@ function AdminUsersContent() {
                       <TrendingUp className="h-4 w-4 mr-2" />
                       Recent Transactions
                     </h4>
-                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
                       {selectedUserBalance.recentLedger.slice(0, 10).map((entry: any, idx: number) => (
                         <div key={idx} className="flex items-center justify-between p-3 bg-muted rounded">
                           <div className="flex items-center space-x-3">
@@ -764,14 +764,21 @@ function AdminUsersContent() {
                               <div className="text-xs text-muted-foreground">
                                 {new Date(entry.date).toLocaleDateString()}
                               </div>
+                              {/* M-Pesa Transaction Code */}
+                              {entry.mpesaTransactionId && (
+                                <div className="flex items-center space-x-1 text-xs text-green-600 mt-1">
+                                  <Receipt className="h-3 w-3" />
+                                  <span className="font-mono">{entry.mpesaTransactionId}</span>
+                                </div>
+                              )}
                             </div>
                           </div>
                           <div className="text-right">
                             <div className={`font-medium ${entry.type === 'sale' ? 'text-green-600' : 'text-red-600'}`}>
-                              {entry.type === 'sale' ? '+' : '-'}{formatPrice(entry.amount)}
+                              {entry.type === 'sale' ? '+' : '-'}KES {entry.amount.toLocaleString()}
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              Balance: {formatPrice(entry.balance)}
+                              Balance: KES {entry.balance?.toLocaleString()}
                             </div>
                           </div>
                         </div>
