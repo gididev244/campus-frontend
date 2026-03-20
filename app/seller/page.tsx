@@ -14,6 +14,7 @@ import {
   Eye,
   Edit,
   Trash2,
+  ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocket } from '@/contexts/SocketContext';
@@ -218,9 +219,16 @@ function SellerDashboardContent() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                  <div>
+                  <div className="md:col-span-2">
                     <p className="text-sm text-muted-foreground mb-1">Available Balance</p>
                     <p className="text-3xl font-bold text-primary">{formatPrice(balance.currentBalance)}</p>
+                    <Link href="/seller/earnings" className="inline-flex items-center mt-3">
+                      <button className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2 text-sm font-medium">
+                        <Wallet className="h-4 w-4" />
+                        Withdraw Funds
+                        <ArrowRight className="h-4 w-4" />
+                      </button>
+                    </Link>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Total Earnings</p>
@@ -234,12 +242,6 @@ function SellerDashboardContent() {
                     <p className="text-2xl font-semibold flex items-center">
                       <ArrowUpFromLine className="h-4 w-4 mr-2 text-blue-600" />
                       {formatPrice(balance.withdrawnTotal)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Pending Withdrawals</p>
-                    <p className="text-2xl font-semibold text-yellow-600">
-                      {formatPrice(balance.pendingWithdrawals)}
                     </p>
                   </div>
                 </div>
