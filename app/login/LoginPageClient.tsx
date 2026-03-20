@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,6 +12,7 @@ import { loginSchema, type LoginFormData } from '@/lib/validations';
 
 export default function LoginPageClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login } = useAuth();
 
   const {
@@ -28,14 +29,23 @@ export default function LoginPageClient() {
     try {
       const result = await login(data.email, data.password);
 
-      // Show success toast
       toast.success('Successfully logged in!');
 
-      // If password change is forced, redirect to change password page
+      const redirectParam = searchParams.get('redirect');
+
       if (result.forcePasswordChange) {
         router.push('/change-password');
+      } else if (redirectParam) {
+        router.push(redirectParam);
       } else {
-        router.push('/');
+        const role = result.user?.role;
+        if (role === 'admin') {
+          router.push('/admin');
+        } else if (role === 'seller') {
+          router.push('/seller');
+        } else {
+          router.push('/buyer');
+        }
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };

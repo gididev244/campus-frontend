@@ -8,7 +8,7 @@ import type { User } from '@/types';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<{ forcePasswordChange: boolean }>;
+  login: (email: string, password: string) => Promise<{ forcePasswordChange: boolean; user: User }>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => void;
   updateUser: (data: Partial<User>) => void;
@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(user);
     setForcePasswordChange(needsPasswordChange || false);
 
-    return { forcePasswordChange: needsPasswordChange || false };
+    return { forcePasswordChange: needsPasswordChange || false, user };
   }, []);
 
   // Stable register function with useCallback
