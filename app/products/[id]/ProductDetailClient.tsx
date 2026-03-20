@@ -49,6 +49,13 @@ export default function ProductDetailClient({ productId }: ProductDetailClientPr
 
   useEffect(() => {
     const fetchProduct = async () => {
+      if (!productId) {
+        console.error('[ProductDetailClient] No productId provided');
+        toast.error('Invalid product ID');
+        router.push('/products');
+        return;
+      }
+
       console.log('[ProductDetailClient] Fetching product:', { productId, userId: user?._id });
       try {
         const res = await productsAPI.getProduct(productId);
