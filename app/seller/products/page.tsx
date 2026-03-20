@@ -32,27 +32,14 @@ function SellerProductsPageContent() {
   const [filter, setFilter] = useState<'all' | 'available' | 'sold' | 'pending'>('all');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login');
-      return;
-    }
-
-    if (!user) {
-      return;
-    }
-
-    if (user.role !== 'seller' && user.role !== 'admin') {
-      router.push('/products');
-      return;
-    }
-
-    fetchProducts();
-  }, [isAuthenticated, user, router, filter]);
-
   const fetchProducts = useCallback(async () => {
+    if (!user?._id) {
+      return;
+    }
+    
     try {
-      const res = await productsAPI.getSellerProducts(user?._id || '');
+      setLoading(true);
+      const res = await productsAPI.getSellerProducts(user._id);
       let filteredProducts = res.data.data || [];
 
       if (filter !== 'all') {
@@ -67,6 +54,24 @@ function SellerProductsPageContent() {
       setLoading(false);
     }
   }, [user?._id, filter]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/login');
+      return;
+    }
+
+    if (!user || !user._id) {
+      return;
+    }
+
+    if (user.role !== 'seller' && user.role !== 'admin') {
+      router.push('/products');
+      return;
+    }
+
+    fetchProducts();
+  }, [isAuthenticated, user, router, fetchProducts]);
 
   const handleDeleteProduct = useCallback(async (productId: string) => {
     if (!confirm('Are you sure you want to delete this product?')) return;
