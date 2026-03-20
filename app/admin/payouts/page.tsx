@@ -4,9 +4,10 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, Check, Phone, Receipt, Package, User, Calendar, ChevronDown, ChevronRight, MessageCircle, Send, Loader2 } from 'lucide-react';
+import { ArrowLeft, Check, Phone, Receipt, Package, User, Calendar, ChevronDown, ChevronRight, MessageCircle, Send, Loader2, Banknote, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ordersAPI } from '@/lib/api/orders';
+import { adminAPI } from '@/lib/api/admin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { formatPrice } from '@/lib/utils';
@@ -50,6 +51,12 @@ function PayoutLedgerContent() {
   const [selectedSeller, setSelectedSeller] = useState<SellerPayoutGroup | null>(null);
   const [notes, setNotes] = useState('');
   const [expandedSellers, setExpandedSellers] = useState<Set<string>>(new Set());
+  const [b2cProcessing, setB2cProcessing] = useState<string | null>(null);
+  const [payoutMode, setPayoutMode] = useState<'manual' | 'b2c'>('manual');
+
+  const sellerGroups = useMemo(() => {
+  const [b2cProcessing, setB2cProcessing] = useState<string | null>(null);
+  const [payoutMode, setPayoutMode] = useState<'manual' | 'b2c'>('manual');
 
   const sellerGroups = useMemo(() => {
     const groups: SellerPayoutGroup[] = [];
@@ -128,16 +135,16 @@ function PayoutLedgerContent() {
 
   const handleMarkSellerPaid = useCallback(async (sellerId: string) => {
     try {
-      setProcessing(sellerId);
-      await ordersAPI.markSellerPaidBatch(sellerId, notes ? { notes } : undefined);
+    setProcessing(sellerId);
+    await ordersAPI.markSellerPaidBatch(sellerId, notes ? { notes } : undefined);
 
-      const paidGroup = sellerGroups.find(g => g.seller._id === sellerId);
-      const paidOrderIds = paidGroup?.orders.map(o => o.orderId) || [];
+    const paidGroup = sellerGroups.find(g => g.seller._id === sellerId);
+    const paidOrderIds = paidGroup?.orders.map(o => o.orderId) || [];
 
-      setOrders(prev => prev.filter(o => !paidOrderIds.includes(o._id)));
+    setOrders(prev => prev.filter(o => !paidOrderIds.includes(o._id)));
 
-      if (paidGroup) {
-        setPendingTotal(prev => Math.max(0, prev - paidGroup.pendingAmount));
+    if (paidGroup) {
+      setPendingTotal(prev => Math.max(0, prev - paidGroup.pendingAmount));
       }
 
       setShowNotesModal(false);
@@ -151,6 +158,41 @@ function PayoutLedgerContent() {
       setProcessing(null);
     }
   }, [notes, sellerGroups]);
+
+  const handleB2CPayout = useCallback(async (sellerId: string) => {
+    if (!selectedSeller) return;
+
+    try {
+      setB2cProcessing(sellerId);
+      
+      const response = await adminAPI.initiateB2CPayout(sellerId, {
+        amount: selectedSeller.pendingAmount,
+        notes: notes || undefined
+      });
+
+      const paidGroup = sellerGroups.find(g => g.seller._id === sellerId);
+
+      if (response.data.b2cStatus === 'processing') {
+        toast.success('B2C payment initiated! Seller will receive M-Pesa shortly.');
+      } else {
+        toast.success('B2C payment completed successfully!');
+        const paidOrderIds = paidGroup?.orders.map(o => o.orderId) || [];
+        setOrders(prev => prev.filter(o => !paidOrderIds.includes(o._id)));
+        if (paidGroup) {
+          setPendingTotal(prev => Math.max(0, prev - paidGroup.pendingAmount));
+        }
+      }
+
+      setShowNotesModal(false);
+      setNotes('');
+      setSelectedSeller(null);
+    } catch (error: any) {
+      console.error('Failed to initiate B2C payout:', error);
+      toast.error(error.response?.data?.message || 'Failed to initiate B2C payout. Please try again.');
+    } finally {
+      setB2cProcessing(null);
+    }
+  }, [notes, selectedSeller, sellerGroups]);
 
   const openNotesModal = useCallback((sellerGroup: SellerPayoutGroup) => {
     setSelectedSeller(sellerGroup);
@@ -486,7 +528,7 @@ function PayoutLedgerContent() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-background rounded-lg p-6 max-w-md w-full mx-4">
             <h3 className="text-lg font-semibold mb-4">
-              Confirm Payment to {selectedSeller.seller?.name || 'Unknown'}
+              Pay {selectedSeller.seller?.name || 'Unknown'}
             </h3>
 
             <div className="space-y-4 mb-6">
@@ -500,8 +542,36 @@ function PayoutLedgerContent() {
                   <span>{selectedSeller.orders.length}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">To:</span>
+                  <span className="text-sm text-muted-foreground">Phone:</span>
                   <span className="font-mono">{selectedSeller.seller?.phone || 'N/A'}</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Payout Method
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setPayoutMode('b2c')}
+                    className={`p-3 rounded-lg border-2 text-left ${payoutMode === 'b2c' ? 'border-primary bg-primary/5' : 'border-border'}`}
+                  >
+                    <div className="flex items-center space-x-2 mb-1">
+                      <Banknote className={`h-4 w-4 ${payoutMode === 'b2c' ? 'text-primary' : ''}`} />
+                      <span className="font-medium text-sm">M-Pesa B2C</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Instant payout via M-Pesa</p>
+                  </button>
+                  <button
+                    onClick={() => setPayoutMode('manual')}
+                    className={`p-3 rounded-lg border-2 text-left ${payoutMode === 'manual' ? 'border-primary bg-primary/5' : 'border-border'}`}
+                  >
+                    <div className="flex items-center space-x-2 mb-1">
+                      <Check className={`h-4 w-4 ${payoutMode === 'manual' ? 'text-primary' : ''}`} />
+                      <span className="font-medium text-sm">Manual</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Mark as paid manually</p>
+                  </button>
                 </div>
               </div>
 
@@ -529,20 +599,43 @@ function PayoutLedgerContent() {
               >
                 Cancel
               </Button>
-              <Button
-                onClick={() => handleMarkSellerPaid(selectedSeller.seller._id)}
-                disabled={processing === selectedSeller.seller._id}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                {processing === selectedSeller.seller._id ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  'Confirm Paid'
-                )}
-              </Button>
+              {payoutMode === 'b2c' ? (
+                <Button
+                  onClick={() => handleB2CPayout(selectedSeller.seller._id)}
+                  disabled={b2cProcessing === selectedSeller.seller._id}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {b2cProcessing === selectedSeller.seller._id ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Banknote className="h-4 w-4 mr-2" />
+                      Pay via M-Pesa
+                    </>
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => handleMarkSellerPaid(selectedSeller.seller._id)}
+                  disabled={processing === selectedSeller.seller._id}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {processing === selectedSeller.seller._id ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      Mark as Paid
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           </div>
         </div>

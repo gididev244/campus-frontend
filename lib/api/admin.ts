@@ -121,19 +121,38 @@ interface ReviewsResponse {
   };
 }
 
-export interface WithdrawalRequest {
-  _id: string;
-  amount: number;
-  status: 'pending' | 'processing' | 'completed' | 'cancelled';
-  requestedAt: string;
-  processedAt?: string;
-  completedAt?: string;
-  notes?: string;
-  sellerId: string;
-  sellerName: string;
-  sellerEmail: string;
-  sellerPhone: string;
-  currentBalance: number;
+  /**
+   * Initiate M-Pesa B2C payout for admin only)
+   */
+  initiateB2CPayout: (sellerId: string, data: {
+    amount: number;
+    notes?: string;
+  }) => api.post<{ success: boolean; message: string; data: B2CPayoutResponse }>(`/payments/b2c/payout`, data),
+
+export interface B2CPayoutResponse {
+  success: boolean;
+  message: string;
+  data: {
+    conversationID: string;
+    originatorConversationID: string;
+    responseCode: string;
+    responseDescription: string;
+    withdrawalId: string;
+    amount: number;
+    status: 'processing' | 'completed' | 'failed';
+    b2cStatus?: string;
+    b2cTransactionId?: string;
+    sellerId: string;
+    sellerName?: string;
+    sellerPhone?: string;
+    requestedAt?: string;
+    completedAt?: string;
+    metadata?: {
+      b2cResultCode?: number;
+      b2cResultDesc?: string;
+      b2cTransactionID?: string;
+    };
+  }
 }
 
 interface WithdrawalRequestsResponse {
@@ -227,4 +246,49 @@ export const adminAPI = {
     status: 'processing' | 'completed' | 'cancelled';
     notes?: string;
   }) => api.put<{ success: boolean; message: string; data: any }>(`/admin/withdrawals/${requestId}`, data),
+
+  /**
+   * Initiate M-Pesa B2C payout to seller
+   * @param sellerId - Seller ID to pay
+   * @param data - Payout data
+   * @param data.amount - Amount to pay in KES
+   * @param data.notes - Optional notes
+   */
+  initiateB2CPayout: (sellerId: string, data: {
+    amount: number;
+    notes?: string;
+  }) => api.post<{ success: boolean; message: string; data: B2CPayoutResponse }>(
+    '/payments/b2c/payout',
+    { sellerId, ...data }
+  ),
+
+  /**
+   * Get B2C payout status
+   * @param conversationId - M-Pesa conversation ID
+   */
+  getB2CPayoutStatus: (conversationId: string) =>
+    api.get<{ success: boolean; data: B2CPayoutStatus }>(
+      `/payments/b2c/status/${conversationId}`
+    ),
 };
+
+export interface B2CPayoutResponse {
+  withdrawalId: string;
+  amount: number;
+  sellerName: string;
+  sellerPhone: string;
+  conversationID: string;
+  status: string;
+}
+
+export interface B2CPayoutStatus {
+  withdrawalId: string;
+  amount: number;
+  status: string;
+  b2cStatus: string;
+  b2cTransactionId?: string;
+  seller: string;
+  requestedAt: string;
+  completedAt?: string;
+  metadata?: Record<string, any>;
+}
